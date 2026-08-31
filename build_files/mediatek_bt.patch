@@ -1,4 +1,0 @@
---- a/drivers/bluetooth/btusb.c
-+++ b/drivers/bluetooth/btusb.c
-@@ -382,6 +382,7 @@ static const struct usb_device_id btusb_table[] = {
- 	{ USB_DEVICE(0x0489, 0xe13a), .driver_info = BTUSB_MEDIATEK },
