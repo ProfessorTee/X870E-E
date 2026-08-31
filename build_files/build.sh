@@ -20,7 +20,7 @@ cd "linux-${BASE_KVER}"
 
 # 4. USB-ID direkt per sed am Anfang der Tabelle einfügen
 echo "Füge USB-ID 0489:e13a direkt in btusb.c ein..."
-sed -i '/static const struct usb_device_id btusb_table\[\] = {/a \t{ USB_DEVICE(0x0489, 0xe13a), .driver_info = BTUSB_MEDIATEK },' drivers/bluetooth/btusb.c
+sed -i '/static const struct usb_device_id btusb_table\[\] = {/a \  { USB_DEVICE(0x0489, 0xe13a), .driver_info = BTUSB_MEDIATEK },' drivers/bluetooth/btusb.c
 
 # 5. btusb-Modul kompilieren
 cd drivers/bluetooth
