@@ -3,7 +3,7 @@ set -euo pipefail
 
 echo "=== Starte MediaTek Bluetooth Fix Build ==="
 
-# 1. Pakete installieren (ohne patch)
+# 1. Pakete installieren
 dnf5 install -y kernel-devel gcc make xz curl
 
 # 2. Bazzite-Kernelversion ermitteln
@@ -35,8 +35,8 @@ mkdir -p "${EXTRA_DIR}"
 cp btusb.ko "${EXTRA_DIR}/"
 depmod -a -b /usr "${TARGET_KVER}"
 
-# 7. Aufräumen
-dnf5 remove -y kernel-devel gcc make xz curl
+# 7. Aufräumen (curl und xz behalten, um das System nicht zu beschädigen)
+dnf5 remove -y kernel-devel gcc make
 dnf5 clean all
 
 echo "=== Build erfolgreich abgeschlossen! ==="
