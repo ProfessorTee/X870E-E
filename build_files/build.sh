@@ -1,27 +1,39 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-set -ouex pipefail
+echo "Starte Build für MediaTek Bluetooth Fix..."
 
-# Copy the contents of system_files/ of the git repo to /
-cp -avf "/ctx/system_files"/. /
+# 1. Bazzite Kernel-Version auslesen (statt den Kernel des GitHub-Servers zu nutzen)
+TARGET_KVER=$(ls /lib/modules | head -n 1)
+KVER_MAJOR=$(echo $TARGET_KVER | cut -d'.' -f1)
+KVER_MINOR=$(echo $TARGET_KVER | cut -d'.' -f2)
+DL_KVER="${KVER_MAJOR}.${KVER_MINOR}"
 
-### Install packages
+echo "Baue Modul für Bazzite-Kernel: $TARGET_KVER"
 
-# Packages can be installed from any enabled yum repo on the image.
-# RPMfusion repos are available by default in ublue main images
-# List of rpmfusion packages can be found here:
-# https://mirrors.rpmfusion.org/mirrorlist?path=free/fedora/updates/43/x86_64/repoview/index.html&protocol=https&redirect=1
+# 2. Build-Tools für das Kompilieren installieren
+dnf install -y kernel-devel gcc make patch xz
 
-# this installs a package from fedora repos
-dnf5 install -y tmux
+# 3. Passende Kernel-Sourcen von kernel.org laden
+cd /tmp
+curl -sL "https://cdn.kernel.org/pub/linux/kernel/v${KVER_MAJOR}.x/linux-${DL_KVER}.tar.xz" | tar -xJ
+cd linux-${DL_KVER}/drivers/bluetooth
 
-# Use a COPR Example:
-#
-# dnf5 -y copr enable ublue-os/staging
-# dnf5 -y install package
-# Disable COPRs so they don't end up enabled on the final image:
-# dnf5 -y copr disable ublue-os/staging
+# 4. Patch anwenden (Die Dateien aus build_files liegen durch das Containerfile in /ctx)
+patch -p3 < /ctx/mediatek_bt.patch
 
-#### Example for enabling a System Unit File
+# 5. Modul gegen die Bazzite-Kernel-Header kompilieren
+echo "obj-m := btusb.o" > Makefile
+make -C /usr/src/kernels/${TARGET_KVER} M=$(pwd) modules
 
-systemctl enable podman.socket
+# 6. Fertiges Modul in das System-Image integrieren
+TARGET_DIR="/usr/lib/modules/${TARGET_KVER}/extra"
+mkdir -p "${TARGET_DIR}"
+cp btusb.ko "${TARGET_DIR}/"
+depmod -a -b /usr ${TARGET_KVER}
+
+# 7. Aufräumen, um das Image klein zu halten
+dnf remove -y kernel-devel gcc make patch xz
+dnf clean all
+
+echo "Bluetooth Fix erfolgreich integriert!"
