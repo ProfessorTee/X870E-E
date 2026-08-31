@@ -3,10 +3,10 @@ set -euo pipefail
 
 echo "=== Starte MediaTek Bluetooth Fix Build ==="
 
-# 1. Pakete mit dnf5 installieren
-dnf5 install -y kernel-devel gcc make patch xz curl
+# 1. Pakete installieren (ohne patch)
+dnf5 install -y kernel-devel gcc make xz curl
 
-# 2. Installierte Bazzite-Kernelversion ermitteln
+# 2. Bazzite-Kernelversion ermitteln
 TARGET_KVER=$(ls /usr/lib/modules | head -n 1)
 BASE_KVER=$(echo "${TARGET_KVER}" | cut -d'-' -f1)
 MAJOR_VER=$(echo "${BASE_KVER}" | cut -d'.' -f1)
@@ -18,14 +18,9 @@ cd /tmp
 curl -sSL "https://cdn.kernel.org/pub/linux/kernel/v${MAJOR_VER}.x/linux-${BASE_KVER}.tar.xz" | tar -xJ
 cd "linux-${BASE_KVER}"
 
-# 4. Patch-Datei suchen & anwenden (-p1 statt -p3)
-PATCH_PATH="/ctx/mediatek_bt.patch"
-if [ ! -f "$PATCH_PATH" ]; then
-    PATCH_PATH="/ctx/build_files/mediatek_bt.patch"
-fi
-
-echo "Wende Patch an aus: ${PATCH_PATH}"
-patch -p1 < "${PATCH_PATH}"
+# 4. USB-ID direkt per sed am Anfang der Tabelle einfügen
+echo "Füge USB-ID 0489:e13a direkt in btusb.c ein..."
+sed -i '/static const struct usb_device_id btusb_table\[\] = {/a \t{ USB_DEVICE(0x0489, 0xe13a), .driver_info = BTUSB_MEDIATEK },' drivers/bluetooth/btusb.c
 
 # 5. btusb-Modul kompilieren
 cd drivers/bluetooth
@@ -41,7 +36,7 @@ cp btusb.ko "${EXTRA_DIR}/"
 depmod -a -b /usr "${TARGET_KVER}"
 
 # 7. Aufräumen
-dnf5 remove -y kernel-devel gcc make patch xz curl
+dnf5 remove -y kernel-devel gcc make xz curl
 dnf5 clean all
 
 echo "=== Build erfolgreich abgeschlossen! ==="
